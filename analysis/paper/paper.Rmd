@@ -1,0 +1,1118 @@
+---
+title: "Compendium for 'Palaeoprecipitation data from Madjedbebe, northern Australia: A novel proxy from ancient pandanus'"
+author:
+  - Ben Marwick:
+      email: bmarwick@uw.edu
+      institute: [UofW]
+      correspondence: true
+institute:
+  - UofW: University of Washington
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    bookdown::word_document2:
+      fig_caption: yes
+      reference_docx: "../templates/template.docx" # Insert path for the DOCX file
+      pandoc_args:
+      - --lua-filter=../templates/scholarly-metadata.lua
+      - --lua-filter=../templates/author-info-blocks.lua
+      - --lua-filter=../templates/pagebreak.lua
+bibliography: references.bib
+csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style
+---
+
+Making Figure 3: Results of the modern stable carbon isotope analysis
+
+```{r}
+# Figure 2 – Modern data 
+# a)	Boxplots overlain by scatter plots of Stuart Highway transect
+#-	Overlain by a line of best fit for all of the data except the >1200mL rainfall
+# E.g. 
+
+library(tidyverse)
+
+# 	Boxplots overlain by scatter plots of western Arnhem Land environments 
+# (order: floodplain, seasonal causeway and woodland)
+
+# Pandanus spiralis from Arnhem Land - 
+# Pandanus fringe is the floodplain, 
+# causeway is seasonal causeway and 
+# woodland is open forest and woodland
+
+#  coloured band showing where the 1200-1400 data sits from the Stuart highway?
+
+iso_results_all <- readxl::read_excel(here::here("analysis/data/raw_data/Isotope Results.xlsx"))
+
+iso_results <- 
+  iso_results_all %>% 
+  filter(Species == "Pandanus spiralis") %>% 
+  filter(ifelse(Vegetation == "Woodland" & !str_detect(Location, "Arnhem"), FALSE, TRUE )) %>% 
+  filter(ifelse(Vegetation == "Pandanus Fringe" & str_detect(Location, "Stuart"), FALSE, TRUE ))
+
+stuart_hwy_1200_1400 <- 
+  iso_results_all %>% 
+  filter(Species == "Pandanus spiralis") %>% 
+  filter(str_detect(Location, "Stuart")) %>% 
+  filter(Rainfall == "1400-1200mL")
+  
+iso_results_veg <- 
+iso_results %>% 
+  filter(Vegetation %in% c("Woodland", 
+                           "Causeway", 
+                           "Pandanus Fringe") ) %>% 
+  mutate(Vegetation = ifelse(Vegetation == "Pandanus Fringe", 
+                            "Floodplain",
+                             Vegetation)) %>% 
+  mutate(Vegetation = case_when(
+    Vegetation == "Floodplain" ~ "Floodplain fringe", 
+    Vegetation == "Woodland" ~ "Open forest and woodland",
+    Vegetation == "Causeway" ~ "Seasonal causeway")
+  ) %>% 
+  mutate(Vegetation_ordered = 
+    fct_relevel(Vegetation, 
+                rev(c("Floodplain fringe", 
+                  "Seasonal causeway", 
+                  "Open forest and woodland"))))
+
+fit_env <- aov(`δ13CV-PDB (‰)` ~ Vegetation_ordered, 
+          data = iso_results_veg)  
+
+summary(fit_env)
+
+intercept <- signif(fit_env$coef[[1]], 5)
+beta <- signif(fit_env$coef[[2]], 3)
+
+library(ggbeeswarm)
+environment_plot <- 
+  ggplot(iso_results_veg, 
+         aes(Vegetation_ordered,
+             `δ13CV-PDB (‰)` )) +
+    annotate("rect",
+             ymax = max(stuart_hwy_1200_1400$`δ13CV-PDB (‰)`),
+             ymin = min(stuart_hwy_1200_1400$`δ13CV-PDB (‰)`),
+             xmax = -Inf,
+             xmin = Inf,
+             alpha = 0.1) +
+  geom_boxplot(width = 0.4,
+               outlier.shape = NA) +
+  geom_quasirandom(alpha = 0.325,
+                   size = 3) +
+  theme_minimal() +
+  labs(x = "Western Arnhem Land environments",
+       y = expression(delta^13*C~V*`-`*PDB~('‰'))) 
+
+environment_plot
+
+ggsave(here::here("analysis/figures/isotope-boxplots-by-environment.svg"))
+ggsave(here::here("analysis/figures/isotope-boxplots-by-environment.png"))
+```
+
+
+Making Figure 4: Results of the archaeological isotope analysis
+
+```{r}
+
+d13_mjb <- readxl::read_excel(here::here("analysis/data/raw_data/Voelker-2016a-Offsets-2020-04-21.xlsx"), sheet = 3)
+
+
+library(tidyverse)
+
+d13_mjb_long <- 
+d13_mjb %>% 
+  stack() %>% 
+  filter(!is.na(values)) %>% 
+  rename(phase = ind) %>% 
+  mutate(phase = str_replace_all(phase, "7a|7b", "7")) %>% 
+  mutate(phase = fct_relevel(phase, 
+                             "Phase 2",
+                             "Phase 3a",
+                             "Phase 3b",
+                             "Phase 4",
+                             "Phase 5",
+                             "Phase 7",
+                             "Modern (western Arnhem Land)"))
+
+d13_mjb_long_7ab <- 
+  d13_mjb %>% 
+  stack() %>% 
+  filter(!is.na(values)) %>% 
+  rename(phase = ind) %>% 
+  mutate(phase = fct_relevel(phase, 
+                             "Phase 2",
+                             "Phase 3a",
+                             "Phase 3b",
+                             "Phase 4",
+                             "Phase 5",
+                             "Phase 7a",
+                             "Phase 7b",
+                             "Modern (western Arnhem Land)"))
+
+library(ggbeeswarm)
+ggplot(d13_mjb_long,
+       aes(phase, 
+           values)) +
+  geom_boxplot() +
+  geom_quasirandom(alpha = 0.4) +
+  theme_minimal()
+
+# put phases on time scale
+phases <- readxl::read_excel(here::here("analysis/data/raw_data/Voelker-2016a-Offsets-2020-04-21.xlsx"), sheet = 1)
+
+library(glue)
+phases_midpoints <- 
+  phases %>% 
+  mutate(phase = as.factor(str_remove(Phase, "#"))) %>% 
+  mutate(phase = str_replace_all(phase, "7a|7b", "7")) %>% 
+  separate(`Age range`, 
+           into = c("start", "end"), 
+           sep = "-") %>% 
+  mutate_at(vars(start, end),
+            parse_number) %>% 
+  mutate(end = if_else(is.na(end), -69, end)) %>% 
+  mutate(midpoint = end + (start - end)/2) %>% 
+  mutate(phase = as.factor(glue('Phase {phase}'))) %>% 
+  group_by(phase) %>% 
+  mutate(midpoint = mean(midpoint)) %>% 
+  ungroup() %>% 
+  # phase 7 midpoint needs some handcraft
+  mutate(midpoint = ifelse(phase == "Phase 7",
+                           (-69 + (602 - -69) /2),
+                           midpoint))
+
+phases_midpoints_7ab <- 
+  phases %>% 
+  mutate(phase = as.factor(str_remove(Phase, "#"))) %>% 
+  separate(`Age range`, 
+           into = c("start", "end"), 
+           sep = "-") %>% 
+  mutate_at(vars(start, end),
+            parse_number) %>% 
+  mutate(end = if_else(is.na(end), 0, end)) %>% 
+  mutate(midpoint = (start - end)/2 + end) %>% 
+  mutate(phase = as.factor(glue('Phase {phase}'))) %>% 
+  group_by(phase) %>% 
+  mutate(midpoint = mean(midpoint)) %>% 
+  ungroup() 
+
+phases_midpoints_long <- 
+d13_mjb_long %>% 
+  left_join(phases_midpoints %>% 
+              select(phase, start, end, midpoint) %>% 
+              distinct(phase, .keep_all = TRUE)) %>% 
+  mutate(phase = ifelse(phase ==  "Modern (western Arnhem Land)",
+                         "Modern", phase)) %>% 
+  mutate(phase = fct_rev(fct_relevel(phase, 
+                             "Phase 2",
+                             "Phase 3a",
+                             "Phase 3b",
+                             "Phase 4",
+                             "Phase 5",
+                             "Phase 7",
+                             "Modern"))) %>% 
+  mutate(midpoint = if_else(is.na(midpoint), -69, midpoint)) %>% 
+  mutate(end = ifelse(phase == "Phase 7",
+                      -69, phase))
+  
+phases_midpoints_long_7ab <- 
+  d13_mjb_long_7ab %>% 
+  left_join(phases_midpoints_7ab %>% 
+              select(phase, start, end, midpoint) %>% 
+              distinct(phase, .keep_all = TRUE)) %>% 
+    mutate(phase = ifelse(phase ==  "Modern (western Arnhem Land)",
+                          "Modern", phase)) %>% 
+    mutate(phase = fct_rev(fct_relevel(phase, 
+                                       "Phase 2",
+                                       "Phase 3a",
+                                       "Phase 3b",
+                                       "Phase 4",
+                                       "Phase 5",
+                                       "Phase 7a",
+                                       "Phase 7b",
+                                       "Modern"))) %>% 
+    mutate(midpoint = if_else(is.na(midpoint), -69, midpoint)) 
+  
+
+  phases_midpoints_long_old <- 
+    phases_midpoints_long %>% 
+    filter(midpoint  > 5000) 
+  
+  phases_midpoints_long_young <- 
+    # phases_midpoints_long %>% 
+    # or 
+    phases_midpoints_long_7ab %>% 
+    filter(midpoint  < 5000) 
+  
+  phases_midpoints_long_no_modern <- 
+    phases_midpoints_long %>% 
+    filter(phase != "Modern")  
+  
+  phases_midpoints_long_z <- 
+    phases_midpoints_long %>% 
+    mutate(z = ifelse(midpoint  < 0, TRUE, FALSE)) 
+    
+  modern_values <- 
+  phases_midpoints_long_young %>% 
+    filter(phase == "Modern") %>%  
+    pull(values)
+  
+  # Have the del13C go from -31 to -25.
+  
+  iso_limits <- c(-31, -25)
+  
+  
+
+library(ggforce)
+mjb_iso_old_plot <- 
+ggplot() +
+  geom_boxplot(data = phases_midpoints_long_z %>% 
+                 filter(phase != "Modern"), 
+               aes(midpoint, 
+                   values,
+                   group = midpoint),
+               width = 7000,
+               outlier.shape = NA) +
+  geom_beeswarm(data = phases_midpoints_long_z %>% 
+                  filter(phase != "Modern"),
+                aes(midpoint, 
+                    values,
+                    group = midpoint),
+                alpha = 0.2) +
+  # annotate("text",
+  #          label = str_wrap(rev(unique(phases_midpoints_long_no_modern$phase)), 15),
+  #          x =     c(rev(unique(phases_midpoints_long_no_modern$midpoint))) ,
+  #          y =  rev(c( rep(-24, (length(unique(phases_midpoints_long_no_modern$midpoint)))))),
+  #          size = 3) +
+
+  annotate("rect",
+           xmax = phases_midpoints$start[1],
+           xmin = phases_midpoints$end[1],
+           ymax = -Inf,
+           ymin = Inf,
+          # fill = viridis::viridis(7)[1],
+           alpha = 0.1) +
+  
+  annotate("rect",
+           xmax = phases_midpoints$start[2],
+           xmin = phases_midpoints$end[2],
+           ymax = -Inf,
+           ymin = Inf,
+          # fill = viridis::viridis(7)[2],
+           alpha = 0.1) +
+  
+  annotate("rect",
+           xmax = phases_midpoints$start[3]-500,
+           xmin = phases_midpoints$end[3],
+           ymax = -Inf,
+           ymin = Inf,
+          # fill = viridis::viridis(7)[3],
+           alpha = 0.1) +
+
+  annotate("rect",
+           xmax = phases_midpoints$start[4],
+           xmin = phases_midpoints$end[4],
+           ymax = -Inf,
+           ymin = Inf,
+          # fill = viridis::viridis(7)[4],
+           alpha = 0.1) +
+  
+  annotate("rect",
+           xmax = phases_midpoints$start[5] ,
+           xmin = phases_midpoints$end[5],
+           ymax = -Inf,
+           ymin = Inf,
+          # fill = viridis::viridis(7)[5],
+           alpha = 0.1) +
+  
+  annotate("rect",
+           xmax = phases_midpoints$start[6],
+           xmin = phases_midpoints$end[7],
+           ymax = -Inf,
+           ymin = Inf,
+           #fill = viridis::viridis(7)[6],
+           alpha = 0.1) +
+  
+  annotate("rect",
+           ymax = mean(modern_values) + sd(modern_values),
+           ymin = mean(modern_values) - sd(modern_values),
+           xmax = -Inf,
+           xmin = Inf,
+           alpha = 0.2) +
+
+  scale_x_reverse(labels = scales::comma,
+                  limits = c(70000, -10000),
+                  breaks = seq(70000, 0, -10000)) +
+  scale_y_continuous(limits = iso_limits) +
+  labs(x = "Years",
+       y = expression(delta^13*C~V*`-`*PDB~('‰'))) +
+  theme_minimal()
+
+# mjb_iso_old_plot
+
+mjb_iso_young_plot <- 
+  ggplot() +
+  geom_boxplot(data = phases_midpoints_long_young,
+               aes(midpoint, 
+                   values,
+                   group = midpoint),
+               width = 90,
+               outlier.shape = NA) +
+  geom_beeswarm(data = phases_midpoints_long_young,
+                aes(midpoint, 
+                    values,
+                    group = midpoint),
+                alpha = 0.2) +
+  annotate("rect",
+           xmax = phases_midpoints$start[6] + 25 ,
+           xmin = phases_midpoints$end[6] - 25,
+           ymax = -Inf,
+           ymin = Inf,
+           #fill = viridis::viridis(7)[6],
+           alpha = 0.1) +
+  annotate("rect",
+           xmax = phases_midpoints$start[7],
+           xmin = phases_midpoints$end[7],
+           ymax = -Inf,
+           ymin = Inf,
+           #fill = viridis::viridis(7)[7],
+           alpha = 0.1) +
+  # annotate("text",
+  #          label = str_wrap(rev(unique(phases_midpoints_long_young$phase)), 15),
+  #          x =     c(rev(unique(phases_midpoints_long_young$midpoint))) ,
+  #          y =  rev(c( rep(-24, (length(unique(phases_midpoints_long_young$midpoint)))-1), -24.5)),
+  #          size = 3) +
+  
+  scale_x_reverse(labels = scales::comma,
+                  limits = c(800, -200),
+                  breaks = seq(800, -200, -100)) +
+  scale_y_continuous(limits = iso_limits) +
+  labs(x = "",
+       y = expression(delta^13*C~V*`-`*PDB~('‰'))) +
+  theme_minimal()
+
+# mjb_iso_young_plot
+
+cowplot::plot_grid(mjb_iso_young_plot, mjb_iso_old_plot,
+                   align = "v",
+                   ncol = 1,
+                   labels="AUTO" )  
+
+ggsave(here::here("analysis/figures/plant-isotope-boxplots-over-time.svg"))
+ggsave(here::here("analysis/figures/plant-isotope-boxplots-over-time.png"))
+
+```
+
+Making Figure 5: Results of the isotope analysis of P. spiralis endocarp, compared to isotope analysis of soil, and stone artefact and exotic raw material discard by depth.
+
+```{r}
+# get depths
+library(tidyverse)
+library(mjbnaturepaper)
+
+surf <- 100.693213   # NE_SEC_TAPE_1
+
+# NE_SEC_TAPE 1 is the ground surface, then the other points are one meter apart
+
+cleaned_rotated_points_in_main_excavation_area <- 
+  read_rds(here::here("analysis/data/raw_data/cleaned_rotated_points_in_main_excavation_area.rds"))
+
+NE_SEC_TAPE <-
+  cleaned_rotated_points_in_main_excavation_area[grepl("NE_SEC_TAPE",
+                                                       cleaned_rotated_points_in_main_excavation_area$Description), ]
+
+# NE_SECT_TAPE 1 is the ground surface, then the other points are one meter apart
+# these are our total station points
+
+# Here we get the points out for total station points to link with the pandanus samples
+
+b3_end_levels <- 
+  cleaned_rotated_points_in_main_excavation_area %>% 
+  filter(str_detect(Description, "B3")) %>% 
+  group_by(square, spit) %>% 
+  summarise_at(vars(Elevation, depth_below_ground_surface), mean)
+
+c2_end_levels <- 
+  cleaned_rotated_points_in_main_excavation_area %>% 
+  filter(str_detect(Description, "C2")) %>% 
+  group_by(square, spit) %>% 
+  summarise_at(vars(Elevation, depth_below_ground_surface), mean)
+
+c3_end_levels <- 
+  cleaned_rotated_points_in_main_excavation_area %>% 
+  filter(str_detect(Description, "C3")) %>% 
+  group_by(square, spit) %>% 
+  summarise_at(vars(Elevation, depth_below_ground_surface), mean)
+
+e4_end_levels <- 
+  cleaned_rotated_points_in_main_excavation_area %>% 
+  filter(str_detect(Description, "E4")) %>% 
+  group_by(square, spit) %>% 
+  summarise_at(vars(Elevation, depth_below_ground_surface), mean)
+
+phase_contexts_ages <- 
+  tribble(~phase, ~context_start, ~context_end, ~ages,
+1, "C2/57" , "C2/47", "(87,410-72,960 to 76,600-65,440)",
+2, "C2/46" , "C2/37", "(68,690-61260 to 55,090-50,380)",
+3, "C2/36" , "C2/29", "(53,980-49,160 to 30,110-26,000)",
+4, "C2/28" , "C3/25", "(28,930-24560 to 14,210-12,210)",
+5, "C3/24" , "C3/19", "(10,530-8,850 to 9,020-7080)",
+6, "C3/18" , "C3/12", "(8,180-6090)",
+7, "C3/11" , "C3/1" , "(3,410-0)")
+
+# link contexts to total station depths
+phase_contexts_ages_depths <- 
+bind_rows(c2_end_levels, 
+          c3_end_levels) %>% 
+  mutate(context = paste0(square, "/", spit)) %>% 
+  right_join(phase_contexts_ages %>% 
+               pivot_longer(-c(phase, ages), 
+                            names_to = "position",
+                            values_to = "context")) %>% 
+  mutate(depth_below_ground_surface = ifelse(depth_below_ground_surface < 0, 0, depth_below_ground_surface))
+
+# CC says Phase 4 upper boundary which we have changed to 1.25m ?
+phase_contexts_ages_depths$depth_below_ground_surface[phase_contexts_ages_depths$context == 'C3/25'] <- 1.25
+phase_contexts_ages_depths$depth_below_ground_surface[phase_contexts_ages_depths$context == 'C2/28'] <- 1.5
+phase_contexts_ages_depths$depth_below_ground_surface[phase_contexts_ages_depths$context == 'C3/24'] <- 1.25
+
+phase_depth <- function(phase_num, boundary){
+  phase_contexts_ages_depths %>% 
+  filter(phase == phase_num & position == boundary) %>% 
+  pull(depth_below_ground_surface) 
+}
+
+phase_depth_midpoints <- 
+  phase_contexts_ages_depths %>% 
+  group_by(phase) %>% 
+  summarise(mean_depth = mean(depth_below_ground_surface),
+            max_depth = max(depth_below_ground_surface),
+            min_depth = min(depth_below_ground_surface)) 
+
+# extend the max depth out to the base of the excavation
+phase_depth_midpoints$max_depth[1] <-  3.4
+       
+phase_boxes_fill <- "grey30"
+
+phase_boxes <- 
+  ggplot() +
+     annotate("rect",
+           xmax = phase_depth(2, "context_start"),
+           xmin = phase_depth(2, "context_end"),
+           ymax = -Inf,
+           ymin = Inf,
+           fill = phase_boxes_fill,
+           alpha = 0.1) +
+       annotate("rect",
+           xmax = phase_depth(4, "context_start"),
+           xmin = phase_depth(4, "context_end"),
+           ymax = -Inf,
+           ymin = Inf,
+           fill = phase_boxes_fill,
+           alpha = 0.1) +
+       annotate("rect",
+           xmax = phase_depth(6, "context_start"),
+           xmin = phase_depth(6, "context_end"),
+           ymax = -Inf,
+           ymin = Inf,
+           fill = phase_boxes_fill,
+           alpha = 0.1) 
+
+check_phase_boxes <- 
+phase_boxes +
+  geom_text(data  = phase_depth_midpoints, 
+            aes(mean_depth, 0, label = phase))  +
+    theme_minimal()  +
+   scale_x_reverse(limits = c(2.5, 0)) 
+
+phase_labels <- 
+  ggplot() +
+    geom_text(data  = phase_depth_midpoints, 
+            aes(mean_depth, 0, label = phase))  +
+    theme_void() +
+   scale_x_reverse(limits = c(2.5, 0)) 
+
+# prepare phase 3a and 3b
+one_half <- (phase_depth_midpoints[phase_depth_midpoints$phase == 3,]$max_depth -
+phase_depth_midpoints[phase_depth_midpoints$phase == 3,]$min_depth) / 2
+
+# [     |      x      |      ]
+
+three_a_min_depth <-   phase_depth_midpoints[phase_depth_midpoints$phase == 3,]$min_depth 
+three_a_mean_depth <-  phase_depth_midpoints[phase_depth_midpoints$phase == 3,]$min_depth + one_half/2
+three_a_max_depth <-   three_a_min_depth + one_half
+
+three_b_min_depth <-   three_a_max_depth 
+three_b_mean_depth <-  three_a_max_depth + one_half/2
+three_b_max_depth <-   phase_depth_midpoints[phase_depth_midpoints$phase == 3,]$max_depth 
+
+# prepare phase 4a and 4b
+one_half <- (phase_depth_midpoints[phase_depth_midpoints$phase == 4,]$max_depth -
+phase_depth_midpoints[phase_depth_midpoints$phase == 4,]$min_depth) / 2
+
+# [     |      x      |      ]
+
+four_a_min_depth <-   phase_depth_midpoints[phase_depth_midpoints$phase == 4,]$min_depth 
+four_a_mean_depth <-  phase_depth_midpoints[phase_depth_midpoints$phase == 4,]$min_depth + one_half/2
+four_a_max_depth <-   four_a_min_depth + one_half
+
+four_b_min_depth <-   four_a_max_depth 
+four_b_mean_depth <-  four_a_max_depth + one_half/2
+four_b_max_depth <-   phase_depth_midpoints[phase_depth_midpoints$phase == 4,]$max_depth 
+
+phase_depth_midpoints_chr <- 
+phase_depth_midpoints %>% 
+  mutate(phase = as.character(phase)) %>% 
+  add_row(phase = "3a",
+          min_depth  = three_a_min_depth,
+          mean_depth = three_a_mean_depth,
+          max_depth = three_a_max_depth) %>% 
+  add_row(phase = "3b",
+           min_depth  = three_b_min_depth,
+           mean_depth = three_b_mean_depth,
+           max_depth = three_b_max_depth) %>% 
+    add_row(phase = "4a",
+           min_depth  = four_a_min_depth,
+           mean_depth = four_a_mean_depth,
+           max_depth = four_a_max_depth) %>% 
+      add_row(phase = "4b",
+           min_depth  = four_b_min_depth,
+           mean_depth = four_b_mean_depth,
+           max_depth =  four_b_max_depth) %>% 
+  mutate(phase_chr = str_c("Phase ", phase))
+```
+
+## Plants isotopes
+
+```{r}
+d13_mjb <- readxl::read_excel(here::here("analysis/data/raw_data/Voelker-2016a-Offsets-2020-04-21.xlsx"), sheet = 3)
+
+# we need to split 4 into 4a and 4b
+d13_mjb_2 <- readxl::read_excel(here::here("analysis/data/raw_data/Voelker-2016a-Offsets-2020-04-21.xlsx"), sheet = 2)
+
+plant_phase_4 <- 
+d13_mjb_2 %>% 
+  separate(Context, 
+           into = c("square", "spit"), "/", 
+           remove = FALSE) %>% 
+  mutate(spit_num = parse_number(spit)) %>% 
+  filter(Phase == 4) %>% 
+  arrange(spit_num) 
+
+plant_phase_4a <- 
+plant_phase_4 %>% 
+  slice(1:floor(nrow(plant_phase_4)/2)) %>% 
+  mutate(Phase = "4a")
+
+plant_phase_4b <- 
+plant_phase_4 %>% 
+   slice(ceiling(nrow(plant_phase_4)/2) : nrow(plant_phase_4)) %>% 
+  mutate(Phase = "4b")
+
+d13_mjb_without_4a_and_4b <- 
+d13_mjb_2 %>% 
+ # filter(Phase != "4") %>% 
+ # bind_rows(plant_phase_4a) %>% 
+ # bind_rows(plant_phase_4b) %>% 
+  mutate(values = parse_number(`Adjusted δ13C` )) %>% 
+  mutate(Phase = str_replace_all(Phase, 
+                                 "7a|7b", 
+                                 "7")) %>% 
+  left_join(phase_depth_midpoints_chr, 
+            by = c('Phase' = 'phase')) %>% 
+  drop_na(values) %>% 
+  left_join(
+  bind_rows(c2_end_levels, 
+          c3_end_levels) %>% 
+  mutate(Context = paste0(square, "/", spit)),
+  by = "Context"
+  ) %>% 
+  group_by(Phase) %>% 
+  mutate(depth_by_context = mean(depth_below_ground_surface,
+                                 na.rm = TRUE)) %>% 
+  mutate(depth_by_context = ifelse(Phase == 7,
+         0, depth_by_context))
+  
+
+library(ggbeeswarm)
+plant_test_plot <- 
+ggplot(d13_mjb_without_4a_and_4b,
+       aes(depth_by_context, 
+           values,
+           group = mean_depth)) +
+  geom_boxplot() +
+  geom_quasirandom(alpha = 0.4) +
+  theme_minimal()
+```
+  
+
+```{r}
+d13_mjb_without_4a_and_4b_phase_means <- 
+d13_mjb_without_4a_and_4b %>% 
+  mutate(depth_below_ground_surface = depth_by_context,
+         phase_number = phase_chr) %>% 
+  group_by(depth_below_ground_surface, phase_number) %>% 
+  summarise(mean_d13C_per_phase = mean(values)) %>% 
+  arrange((depth_below_ground_surface))
+
+write_csv(d13_mjb_without_4a_and_4b_phase_means,
+          "analysis/data/derived_data/plant_d13_mjb_phase_means_and_depths.csv")
+
+write_csv(d13_mjb_without_4a_and_4b,
+          "analysis/data/derived_data/plant_d13_mjb_phase_values_and_depths.csv")
+```
+
+Plot the plant isotope values, boxplots by depth
+
+```{r}
+# Have the d13C go from -31 to -25.
+iso_limits <- c(-31, -25)
+
+ymax <- 2.5 
+ymin <- -0.1
+
+library(ggforce)
+plant_plot <- 
+phase_boxes +
+  # geom_text(data = phase_depth_midpoints_chr %>% 
+  #             filter(phase != "3"),
+  #           aes(mean_depth, -25., label = phase_chr)) +
+  geom_boxplot(data = d13_mjb_without_4a_and_4b , 
+               aes(depth_by_context, 
+                   values,
+                   group = depth_by_context),
+               width = 0.1,
+               outlier.shape = NA) +
+  geom_beeswarm(data = d13_mjb_without_4a_and_4b,
+                aes(depth_by_context, 
+                    values,
+                    group = depth_by_context),
+                size = 2,
+                alpha = 0.2) +
+  scale_x_reverse(labels = scales::comma,
+                  limits = c(ymax, ymin),
+                  breaks = seq(ymax, ymin, -0.5)) +
+  # scale_y_continuous(limits = iso_limits) +
+  labs(x = "",
+       y = expression(atop("Pandanus", delta^13*C~V*`-`*PDB~('‰')))) +
+  theme_minimal() +
+      theme(axis.title.y = element_text(size=8),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) 
+
+# plant_plot
+```
+
+<!-- above chunks taken from notes-on-figure-4-depth-on-x-axis-boxplots-context.Rmd -->
+
+Now we prepare the sediment data for a line plot. 
+
+Read in the isotope data...
+
+```{r}
+# Let's read in our sediment isotope data
+
+library(tidyverse)
+dC13_data <- readxl::read_excel(here::here("analysis/data/raw_data/Page_160404_CombinedResults final full.xlsx"))
+
+# clean_and_tidydC13_data
+
+# data are in rows 4 to 78
+dC13_data_rows <- c(4:78)
+# sample IDs, etc
+sample_ID <- dC13_data[ dC13_data_rows, ][[2]]
+sample_mass <- as.numeric(dC13_data[ dC13_data_rows, ][[9]])
+d15N <- as.numeric(dC13_data[ dC13_data_rows, ][[16]])
+d13C_corrected <- as.numeric(dC13_data[ dC13_data_rows, ][[27]])
+# col 6 is depth, remember that ground surface was 1 m on the tape
+depth <- as.numeric(dC13_data[ dC13_data_rows, ][[6]]) / 100 - 1
+# assign run numbers using date
+analysis_date <- as.numeric(dC13_data[ dC13_data_rows, ][[1]])
+
+# put into dataframe
+d13C_depth <- data.frame(sample_ID = sample_ID,
+                         sample_mass = sample_mass,
+                         d15N = d15N,
+                         depth = depth, # + 0.25, # CC says maybe 25 cm of topsoil was removed
+                         d13C_corrected = d13C_corrected,
+                         analysis_date = analysis_date
+)
+
+# there are some replicates, let's identify them and get
+# max and min values for each sample
+d13C_depth_means <- d13C_depth %>%
+  # remove outliers according to Mara's report
+  filter(!d13C_corrected %in% c(-23.88182, -27.52253)) %>% 
+  group_by(factor(depth)) %>%
+  summarize(mean_d13C_corrected = mean(d13C_corrected, na.rm = TRUE),
+            max_d13C_corrected = max(d13C_corrected),
+            min_d13C_corrected = min(d13C_corrected),
+            diff_d13C_corrected = max_d13C_corrected - min_d13C_corrected) %>%
+  mutate(depth = (as.character(`factor(depth)`))) %>%
+  select(-`factor(depth)`) %>% 
+  ungroup
+
+d13C_depth_means_tape_depth <- as.numeric(d13C_depth_means$depth)
+d13C_depth_means_depth <- as.numeric(d13C_depth_means$depth)
+d13C_depth_means_depth_num <- seq(0.25, 3.4, length.out = length(  d13C_depth_means_depth))
+d13C_depth_means_depth_num2 <- seq(0, 3.4, length.out = length( d13C_depth_means_depth))
+d13C_depth_means$depth <- sprintf(d13C_depth_means_depth_num, fmt = '%#.2f')
+```
+
+```{r}
+# with CC's edits
+dC13_data <- readxl::read_excel(here::here("analysis/data/raw_data/d13C-sediment-depths-CC-15-Apr.xlsx"))
+
+# use CC's depths and the previous d13C values
+d13C_depth_means$depth <- c(dC13_data$depth, rep(999, 13))
+d13C_depth_means$depth_num <- d13C_depth_means$depth 
+d13C_depth_means$depth <- sprintf(d13C_depth_means$depth, fmt = '%#.2f')
+```
+
+
+This will add total station depth values to the sediment isotope samples
+
+```{r}
+# get the total station depths for the tape depths for dC13
+
+# put tape and total station depths together
+tape_depths <- data.frame(tape = 0:3,
+                          total_station = NE_SEC_TAPE$Elevation)
+
+xout <- xout <- seq(min(as.numeric(d13C_depth_means$depth)),
+                    4,
+            by = 0.01)
+
+# approx returns a list, convert to dataframe
+# we also need to extrapolate a little
+tape_depths_interp <- data.frame(do.call(cbind,
+                                         Hmisc::approxExtrap(tape_depths$tape,
+                                                             tape_depths$total_station,
+                                                             n = length(xout),
+                                                             xout = xout)))
+names(tape_depths_interp) <- names(tape_depths)
+tape_depths_interp$tape <- sprintf(tape_depths_interp$tape, fmt = '%#.2f')
+write_csv(tape_depths_interp, here::here("analysis/data/derived_data/tape_depths_interp.csv"))
+
+tape_depths_interp$tape <- as.character(tape_depths_interp$tape)
+
+d13C_depth_means_total_station <-
+  dplyr::left_join(d13C_depth_means,
+                   tape_depths_interp,
+                   by = c('depth' = 'tape'))
+```
+
+Read in the isotope correction values...
+
+```{r}
+# what average offset can we use for 60+ ka
+hare_offsets <-
+  readxl::read_excel(here::here("analysis/data/raw_data/mmc1.xlsx"), skip = 39)
+
+hare_offsets_correction <-
+  hare_offsets %>%
+  mutate(correction = hare_offsets$`Voelker-2016a (angiosperms)`[1] - `Voelker-2016a (angiosperms)`) %>% 
+  mutate(age_chr_kya = (sprintf(`AGE (kyr)`, fmt = '%#.1f')))
+
+sixty_to_90_ka <- 
+hare_offsets_correction %>% 
+  filter(`AGE (kyr)` %in% 60:90) %>% 
+  summarise(correction = mean(correction))
+# and then update this sheet data/Voelker-2016a Offsets.xlsx with this value for phase one.
+
+# apply phase-wise corrections
+volker_offsets <-
+  readxl::read_excel(here::here("analysis/data/raw_data//Voelker-2016a-Offsets-2020-04-21.xlsx")) %>%
+  separate(`Age range`,
+           into = c("start", "end"),
+           sep = "-") %>%
+  mutate_at(vars(start, end),
+            parse_number)
+
+# tidy this up a bit to use with the sediment isotope data
+volker_offsets_tidy <- 
+volker_offsets %>% 
+  separate(`Oldest spit`, into = c('old_sq', 'old_spit'), remove = FALSE) %>% 
+  separate(`Youngest spit`, into = c('young_sq', 'young_spit'), remove = FALSE) %>% 
+  select(Phase, old_sq,  old_spit, young_sq, young_spit, `Offset (Voelker-2016a)` ) %>% 
+  pivot_longer(cols = c( old_spit, young_spit),
+               values_to = "spit")
+```
+
+Apply correction by phase. We have phase boundaries by C2 spits, so we need get the total station depths of the C2 spits. Then we can link the sediment sample depths by total station depths. 
+
+```{r}
+c2_volker_offsets_tidy <- 
+volker_offsets_tidy %>% 
+  filter(old_sq == "C2") %>% 
+  left_join(c2_end_levels)
+
+c3_volker_offsets_tidy <- 
+volker_offsets_tidy %>% 
+  filter(old_sq == "C3") %>% 
+  left_join(c2_end_levels)
+
+c2_and_c3_volker_offsets_tidy <- 
+  bind_rows(c2_volker_offsets_tidy, 
+            c3_volker_offsets_tidy) %>% 
+  mutate(spit = parse_number(spit)) %>% 
+  arrange(spit) %>% 
+  filter(spit != 37) %>% # because this one has a depth lower then upper spits.
+  filter(name == "young_spit")
+
+c2_and_c3_volker_offsets_tidy_expanded <- 
+tibble(elev = seq(96.5, 101, by = 0.001)) %>% 
+    mutate(elev_chr = sprintf(elev, fmt = '%#.2f')) %>% 
+  left_join(c2_and_c3_volker_offsets_tidy %>% 
+               mutate(elev_chr = sprintf(Elevation, fmt = '%#.2f'))) %>% 
+  fill(everything())
+
+d13C_depth_means_total_station_phases_offsets <- 
+d13C_depth_means_total_station %>% 
+  mutate(Elevation_chr = sprintf(total_station, fmt = '%#.2f')) %>% 
+  left_join(c2_and_c3_volker_offsets_tidy_expanded %>% 
+              mutate(Elevation_chr = elev_chr),
+            by = "Elevation_chr") %>% 
+  distinct(depth, .keep_all = TRUE) %>% 
+  fill(everything()) %>% 
+  mutate(archy_corrected_d13 = mean_d13C_corrected - `Offset (Voelker-2016a)`,
+         depth = parse_number(depth))  %>% 
+    mutate(phase = parse_number(Phase))  %>% 
+  filter(depth_num != 999)
+
+# join phase to depth
+library(data.table) 
+# dC13_data
+# d13C_depth_means_total_station_phases_offsets
+x <- setDT(dC13_data %>% 
+             select(depth, archy_corrected_d13))
+y <- setDT(phase_depth_midpoints) # converting to data.table in place
+
+# get phase mid-depths for isotope values by
+# non-equi join
+d13C_depth_means_total_station_phases_midpoints <- 
+x[y, 
+      on = .(depth >= min_depth,
+             depth < max_depth), 
+      nomatch = 0,
+      .(archy_corrected_d13, 
+        phase, 
+        mean_depth)]
+
+
+```
+
+
+Let's see the sediment isotopes plot
+
+```{r}
+
+ymax <- 2.5
+ymin <- -0.1 # for the boxplot to fit
+
+sed_plot <- 
+# phase_boxes +
+  phase_boxes +
+  geom_text(data = phase_depth_midpoints , 
+            aes(mean_depth, -21.25, 
+                label = phase)) +
+  geom_line(data = d13C_depth_means_total_station_phases_offsets, 
+            aes(depth_num,
+           archy_corrected_d13),
+          # label = depth_num),
+           colour = "black",
+           size = 1) +
+  ylim(-23.6, -21.2) +
+  scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size=8),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+    labs(y = expression(atop("sediment", delta^13*C~V*`-`*PDB~('‰'))),
+         x = "")
+```
+
+
+```{r}
+# get lithic data
+exotic_lithic_data <-
+  readxl::read_excel(here::here("analysis/data/raw_data/Artefact counts and exotics by depth C2-D3 for Ben.xlsx"))
+
+exotic_lithic_data_jun_2020 <-
+  readxl::read_excel(here::here("analysis/data/raw_data/Etics per litre back all.xlsx")) %>% 
+  drop_na
+
+total_lithic_data_jun_2020 <-
+  readxl::read_excel(here::here("analysis/data/raw_data/Artefacts and exotics per litre rows1-3 of MJB.xlsx")) %>% 
+  drop_na
+
+library(scales)
+tot_plot_jun_2020 <- 
+# phase_boxes +
+  phase_boxes +
+    geom_point(data = exotic_lithic_data_jun_2020,
+            aes(`Depth m`,
+           `Artefacts/Litre`),
+           colour = "grey80") +
+  stat_smooth(data = exotic_lithic_data_jun_2020,
+            aes(`Depth m`,
+           `Artefacts/Litre`),
+           span = 0.075,
+           colour = "black",
+           se = FALSE) +
+  scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal()   +
+    theme(axis.title.y = element_text(size=8),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+    labs(y = "All stone artefacts\nper Litre of sediment",
+         x = "")
+
+tot_plot_0.1_jun_2020 <- 
+# phase_boxes +
+  phase_boxes +
+    geom_point(data = total_lithic_data_jun_2020,
+            aes(`Depth`,
+           Total),
+           colour = "grey80") +
+  stat_smooth(data = total_lithic_data_jun_2020,
+            aes(`Depth`,
+           Total),
+           span = 0.085,
+           colour = "black",
+           se = FALSE) +
+  scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal()   +
+    theme(axis.title.y = element_text(size=8),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+    labs(y = "All stone artefacts (n)",
+         x = "")
+
+ex_plot_jun_2020 <- 
+# phase_boxes +
+  phase_boxes +
+    geom_point(data = exotic_lithic_data_jun_2020,
+            aes(`Depth m`,
+           `Exotics/Litre`),
+           colour = "grey80") +
+  stat_smooth(data = exotic_lithic_data_jun_2020,
+             aes(`Depth m`,
+           `Exotics/Litre`),
+           colour = "black",
+           span = 0.075,
+           se = FALSE) +
+ scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size=8)) +
+    labs(y = "Exotic stone artefacts\nper Litre of sediment",
+         x = "Depth below surface (m)")
+
+ex_plot_0.1_jun_2020 <- 
+# phase_boxes +
+  phase_boxes +
+    geom_point(data = total_lithic_data_jun_2020,
+            aes(`Depth`,
+           `Total Exotics`),
+           colour = "grey80") +
+  stat_smooth(data = total_lithic_data_jun_2020,
+             aes(`Depth`,
+           `Total Exotics`),
+           colour = "black",
+           span = 0.085,
+           se = FALSE) +
+ scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size=8)) +
+    labs(y = "Exotic stone artefacts (n)",
+         x = "Depth below surface (m)")
+
+exotic_lithic_data_spit_mean <- 
+  exotic_lithic_data %>% 
+  group_by(Depth) %>% 
+  summarise(perc_ex_mean = mean(`% Exotics`, na.rm = TRUE),
+            num_ex_mean = mean(`Total Exotics`, na.rm = TRUE),
+            num_tot_mean = mean(`Total Artefacts`, na.rm = TRUE))
+
+library(scales)
+tot_plot <- 
+# phase_boxes +
+  phase_boxes +
+    geom_point(data = exotic_lithic_data,
+            aes(Depth,
+           `Total Artefacts`),
+           colour = "grey80") +
+  stat_smooth(data = exotic_lithic_data_spit_mean,
+            aes(Depth,
+           num_tot_mean),
+           span = 0.075,
+           colour = "black",
+           se = FALSE) +
+  scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal()   +
+    theme(axis.title.y = element_text(size=8),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+    labs(y = "Total\nartefacts (n)",
+         x = "")
+
+ex_plot <- 
+# phase_boxes +
+  phase_boxes +
+    geom_point(data = exotic_lithic_data,
+            aes(Depth,
+           `Total Exotics`),
+           colour = "grey80") +
+  stat_smooth(data = exotic_lithic_data_spit_mean,
+            aes(Depth,
+           num_ex_mean),
+           colour = "black",
+           span = 0.075,
+           se = FALSE) +
+ scale_x_reverse(limits = c(ymax, ymin)) +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size=8)) +
+    labs(y = "Exotic raw\nmaterials (n)",
+         x = "Depth below surface (m)")
+```
+
+
+```{r}
+library(patchwork)
+
+sed_plot / plant_plot / tot_plot_jun_2020 / ex_plot_jun_2020 + plot_layout(heights = c(1, 1, 1, 1))
+
+ggsave(here::here("analysis/figures/isotope-lithics-panel-line-and-boxplots-over-time.svg"),
+       height = 6,
+       width = 5)
+ggsave(here::here("analysis/figures/isotope-lithics-panel-line-and-boxplots-over-time.png"),
+       height = 6,
+       width = 5)
+```
+
+Here's how the saved plot looks:
+
+```{r}
+knitr::include_graphics(here::here("figures/isotope-lithics-panel-line-and-boxplots-over-time.png"))
+```
+
+
+
+
+### Colophon
+
+This report was generated on `r Sys.time()` using the following computational environment and dependencies: 
+
+```{r colophon, cache = FALSE}
+# which R packages and versions?
+if ("devtools" %in% installed.packages()) devtools::session_info()
+```
+
+The current Git commit details are:
+
+```{r}
+# what commit is this file at? 
+if ("git2r" %in% installed.packages() & git2r::in_repository(path = ".")) git2r::repository(here::here())  
+```

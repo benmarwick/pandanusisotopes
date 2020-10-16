@@ -7,21 +7,16 @@
 
 This repository contains the data and code for our paper:
 
-> Authors, (YYYY). *Title of your paper goes here*. Name of journal/book
-> <https://doi.org/xxx/xxx>
-
-Our pre-print is online here:
-
-> Authors, (YYYY). *Title of your paper goes here*. Name of
-> journal/book, Accessed 30 Apr 2020. Online at
-> <https://doi.org/xxx/xxx>
+> Florin, A. et al. (2020). *Palaeoprecipitation data from Madjedbebe,
+> northern Australia: A novel proxy from ancient pandanus*.
 
 ### How to cite
 
 Please cite this compendium as:
 
-> Authors, (2020). *Compendium of R code and data for Title of your
-> paper goes here*. Accessed 30 Apr 2020. Online at
+> Marwick, B., A. Florin et al., (2020). *Compendium of R code and data
+> for Palaeoprecipitation data from Madjedbebe, northern Australia: A
+> novel proxy from ancient pandanus*. Accessed 16 Oct 2020. Online at
 > <https://doi.org/xxx/xxx>
 
 ### How to download or install
