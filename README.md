@@ -19,18 +19,10 @@ Please cite this compendium as:
 > novel proxy from ancient pandanus*. Accessed 16 Oct 2020. Online at
 > <https://doi.org/xxx/xxx>
 
-### How to download or install
+### How to download
 
 You can download the compendium as a zip from from this URL:
-</archive/master.zip>
-
-Or you can install this compendium as an R package, pandanusisotopes,
-from GitHub with:
-
-``` r
-# install.packages("devtools")
-remotes::install_github("/")
-```
+<https://github.com/benmarwick/pandanusisotopes/archive/master.zip>
 
 ### Licenses
 

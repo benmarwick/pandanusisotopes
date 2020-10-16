@@ -29,18 +29,9 @@ Please cite this compendium as:
 
 > Marwick, B., A. Florin et al.,  (`r format(Sys.Date(), "%Y")`). _Compendium of R code and data for `r Title`_. Accessed `r format(Sys.Date(), "%d %b %Y")`. Online at <https://doi.org/xxx/xxx>
 
-### How to download or install
+### How to download
 
-You can download the compendium as a zip from from this URL: </archive/master.zip>
-
-Or you can install this compendium as an R package, pandanusisotopes, from GitHub with:
-
-
-```{r gh-installation, eval = FALSE}
-# install.packages("devtools")
-remotes::install_github("/")
-```
-
+You can download the compendium as a zip from from this URL: <https://github.com/benmarwick/pandanusisotopes/archive/master.zip>
 
 ### Licenses
 
