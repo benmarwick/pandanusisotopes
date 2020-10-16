@@ -33,3 +33,5 @@ Imports: bookdown,
     viridis (>= 0.5.1)
 Suggests: devtools,
     git2r
+URL: https://github.com/benmarwick/pandanusisotopes
+BugReports: https://github.com/benmarwick/pandanusisotopes/issues
