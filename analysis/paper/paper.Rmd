@@ -1098,6 +1098,113 @@ Here's how the saved plot looks:
 knitr::include_graphics(here::here("figures/isotope-lithics-panel-line-and-boxplots-over-time.png"))
 ```
 
+Results of the modern P. spiralis charring experiment. Compares dried and charred endocarp δ13C values 
+
+```{r}
+library(tidyverse)
+
+charring <- 
+  readxl::read_excel(here::here("analysis/data/raw_data/Charring experiment.xlsx"), sheet = 1)
+
+charring$specimen_n <-
+  sprintf("%02d", 
+ parse_number(charring$`Specmen Number`))
+
+charring$plant_n <- 
+  paste0("Plant #", 
+         charring$specimen_n )
+
+charring_plot <- 
+charring %>% 
+  ggplot() +
+  aes(plant_n,
+      `δ13CV-PDB (‰)`, #`δ13CV-PDB (‰)`,
+      colour = `Physical pre-treatment`) +
+  geom_beeswarm() +
+  labs(y = expression(delta^13*C~V*`-`*PDB~('‰')),
+       x = "") +
+  scale_y_continuous(labels = c(-30:-26),
+                     breaks = c(-30:-26)) +
+  scale_color_discrete(name = "Treatment") +
+  theme_minimal(base_size = 14 ) +
+  theme(legend.position="bottom",
+        panel.grid.minor.y = element_blank(),
+        axis.text.x = element_text(angle = 90))  +
+  guides(colour=guide_legend(nrow=2, byrow=TRUE))
+
+ggsave(here::here("analysis/figures/charring-experiment-plot.png"),
+       height = 6,
+       width = 10)
+
+library(ggbeeswarm)
+charring_boxplot <- 
+charring %>% 
+  ggplot() +
+  aes(str_wrap(`Physical pre-treatment`, 15),
+      `δ13CV-PDB (‰)`, #`δ13CV-PDB (‰)`,
+      ) +
+  geom_boxplot() +
+  geom_quasirandom(alpha = 0.2) +
+  labs(y = expression(delta^13*C~V*`-`*PDB~('‰')),
+       x = "") +
+  theme_bw(base_size = 8) 
+
+library(cowplot)
+ggdraw(charring_plot) +
+  draw_plot(charring_boxplot, 
+            .55, .8, # x and y coord
+            .45, .2)  # plot size
+
+
+ggsave(here::here("analysis/figures/charring-experiment-plot-boxplot-inset.png"),
+       height = 7,
+       width = 8)
+
+ggsave(here::here("analysis/figures/charring-experiment-plot-boxplot-inset.svg"),
+       height = 7.5,
+       width = 8)
+
+# four groups
+anova_charring <- 
+aov(`δ13CV-PDB (‰)` ~ as.factor(`Physical pre-treatment`),
+    data = charring)
+
+TukeyHSD(anova_charring)
+
+summary(anova_charring)
+
+apa::anova_apa(anova_charring)
+
+# two groups, charring and dried
+anova_charring_2_groups <- 
+charring %>% 
+  mutate(all_char = ifelse(str_detect(`Physical pre-treatment`, "Char"),
+                           "char", "dried")) %>% 
+  aov(`δ13CV-PDB (‰)` ~ as.factor(all_char),
+    data = .)
+
+TukeyHSD(anova_charring_2_groups)
+
+summary(anova_charring_2_groups)
+
+# only charring groups
+anova_charring_only_groups <- 
+charring %>% 
+  filter(str_detect(`Physical pre-treatment`, "Char")) %>% 
+  aov(`δ13CV-PDB (‰)` ~ as.factor(`Physical pre-treatment`),
+    data = .)
+
+TukeyHSD(anova_charring_only_groups)
+
+summary(anova_charring_only_groups)
+
+apa::anova_apa(anova_charring_only_groups)
+  
+
+
+
+
+```
 
 
 
