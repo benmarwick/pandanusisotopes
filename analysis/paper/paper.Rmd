@@ -23,106 +23,79 @@ csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the 
 Making Figure 3: Results of the modern stable carbon isotope analysis
 
 ```{r}
-# Figure 2 – Modern data 
-# a)	Boxplots overlain by scatter plots of Stuart Highway transect
-#-	Overlain by a line of best fit for all of the data except the >1200mL rainfall
-# E.g. 
+# Figure 3 – Modern data
 
 library(tidyverse)
 
-# 	Boxplots overlain by scatter plots of western Arnhem Land environments 
-# (order: floodplain, seasonal causeway and woodland)
+# 	Boxplots overlain by scatter plots of western Arnhem Land environments
+# (order: floodplain, seasonal causeway, and woodland)
 
-# Pandanus spiralis from Arnhem Land - 
-# Pandanus fringe is the floodplain, 
-# causeway is seasonal causeway and 
+# Pandanus spiralis from Arnhem Land -
+# Pandanus fringe is the floodplain,
+# causeway is seasonal causeway and
 # woodland is open forest and woodland
 
-#  coloured band showing where the 1200-1400 data sits from the Stuart highway?
+iso_results_all <- readxl::read_excel(here::here("analysis/data/raw_data/IsotopeResults-Nicholas-Patton.xlsx"),
+                                                 sheet = "Site Averaged_ABA")
+# 259 measurements
 
-iso_results_all <- readxl::read_excel(here::here("analysis/data/raw_data/Isotope Results.xlsx"))
+# keep 'woodland' only for locations that are Arnhem Highway, ERA Mining Lease
+# keep 'Pandanus Fringe' aka 'floodplain' for locations that are not Stuart Highway
 
-iso_results <- 
-  iso_results_all %>% 
-  filter(Species == "Pandanus spiralis") %>% 
-  filter(ifelse(Vegetation == "Woodland" & !str_detect(Location, "Arnhem"), FALSE, TRUE )) %>% 
-  filter(ifelse(Vegetation == "Pandanus Fringe" & str_detect(Location, "Stuart"), FALSE, TRUE ))
+iso_results <-
+  iso_results_all %>%
+  filter(Species == "Pandanus spiralis") %>%
+  filter(`Physical pre-treatment` ==  "Charred at 500ºC for 2 hours") %>%
+  filter(Locality == "Arnhem Highway, ERA Mining Lease")
+# 91 measurements
 
-stuart_hwy_1200_1400 <- 
-  iso_results_all %>% 
-  filter(Species == "Pandanus spiralis") %>% 
-  filter(str_detect(Location, "Stuart")) %>% 
-  filter(Rainfall == "1400-1200mL")
-  
-iso_results_veg <- 
-iso_results %>% 
-  filter(Vegetation %in% c("Woodland", 
-                           "Causeway", 
-                           "Pandanus Fringe") ) %>% 
-  mutate(Vegetation = ifelse(Vegetation == "Pandanus Fringe", 
-                            "Floodplain",
-                             Vegetation)) %>% 
-  mutate(Vegetation = case_when(
-    Vegetation == "Floodplain" ~ "Floodplain fringe", 
-    Vegetation == "Woodland" ~ "Open forest and woodland",
-    Vegetation == "Causeway" ~ "Seasonal causeway")
-  ) %>% 
-  mutate(Vegetation_ordered = 
-    fct_relevel(Vegetation, 
-                rev(c("Floodplain fringe", 
-                  "Seasonal causeway", 
-                  "Open forest and woodland"))))
+iso_results_veg <-
+  iso_results %>%
+  filter(Vegetation %in% c("Open forest and woodland",
+                           "Seasonal causeway",
+                           "Pandanus fringe") ) %>%
+  mutate(Vegetation = ifelse(Vegetation == "Pandanus fringe",
+                             "Floodplain fringe",
+                             Vegetation)) %>%
+  mutate(Vegetation_ordered =
+           fct_relevel(Vegetation,
+                       rev(c("Floodplain fringe",
+                             "Seasonal causeway",
+                             "Open forest and woodland"))))
 
 # between all three environments
-fit_env <- aov(`δ13CV-PDB (‰)` ~ Vegetation_ordered, 
-          data = iso_results_veg)  
+fit_env <- aov(`δ13CV-PDB (‰)` ~ Vegetation_ordered,
+               data = iso_results_veg)
 
 apa::anova_apa(fit_env)
 
 summary(fit_env)
-#                     Df Sum Sq Mean Sq F value Pr(>F)  
-# Vegetation_ordered   2   3.92  1.9623   2.902 0.0588 .
-# Residuals          121  81.83  0.6763                 
-# ---
-# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 intercept <- signif(fit_env$coef[[1]], 5)
 beta <- signif(fit_env$coef[[2]], 3)
 
-# between two environments at the edges
-fit_env2 <- aov(`δ13CV-PDB (‰)` ~ Vegetation_ordered, 
-          data = iso_results_veg %>% 
-            filter(Vegetation %in% c("Floodplain fringe", 
-                                     "Open forest and woodland")))  
+x <- (iso_results$`δ13CV-PDB (‰)`)
 
-summary(fit_env2)
-#                    Df Sum Sq Mean Sq F value Pr(>F)  
-# Vegetation_ordered  1   3.86   3.858   5.947 0.0174 *
-# Residuals          67  43.47   0.649                 
-# ---
-# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-apa::anova_apa(fit_env2)
-
+iqr = c(quantile(x, 3/4), quantile(x, 1/4))
 
 library(ggbeeswarm)
-environment_plot <- 
-  ggplot(iso_results_veg, 
+environment_plot <-
+  ggplot(iso_results_veg,
          aes(Vegetation_ordered,
              `δ13CV-PDB (‰)` )) +
-    annotate("rect",
-             ymax = max(stuart_hwy_1200_1400$`δ13CV-PDB (‰)`),
-             ymin = min(stuart_hwy_1200_1400$`δ13CV-PDB (‰)`),
-             xmax = -Inf,
-             xmin = Inf,
-             alpha = 0.1) +
+  annotate("rect",
+           ymax = iqr[1],
+           ymin =  iqr[2],
+           xmax = -Inf,
+           xmin = Inf,
+           alpha = 0.1) +
   geom_boxplot(width = 0.4,
                outlier.shape = NA) +
   geom_quasirandom(alpha = 0.325,
                    size = 3) +
   theme_minimal() +
   labs(x = "Western Arnhem Land environments",
-       y = expression(delta^13*C~V*`-`*PDB~('‰'))) 
+       y = expression(delta^13*C~V*`-`*PDB~('‰')))
 
 environment_plot
 
